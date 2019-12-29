@@ -46,12 +46,6 @@ mutable struct Game
   end
 end
 
-function valid_pos(board, pos)
-  nx, ny = size(board)
-  x, y = pos
-  return (1 <= x <= nx) && (1 <= y <= ny) &&  (x % 2 != y % 2)
-end
-
 function assert_board_coherence(g)
   # Assert that all items listed in cache are in the right place (soundness)
   for (i, pos) in enumerate(g.char_pos)
@@ -142,6 +136,116 @@ function assert_state_coherence(g)
   @assert g.jack ∉ g.shcards
 end
 
+#####
+##### Access utilities
+#####
+
+get_activated(g, pos) = g.board[pos...].activated
+get_lampid(g, pos) = g.board[pos...].lampid
+get_type(g, pos) = g.board[pos...].type
+get_character(g, pos) = g.board[pos...].character
+
+function set_activated!(g, pos, activated)
+  t = g.board[pos...]
+  g.board[pos...] = Tile(t.type, activated, t.lampid, t.character)
+end
+
+function set_lampid!(g, pos, lampid)
+  t = g.board[pos...]
+  g.board[pos...] = Tile(t.type, t.activated, lampid, t.character)
+end
+
+function set_character!(g, pos, character)
+  t = g.board[pos...]
+  g.board[pos...] = Tile(t.type, t.activated, t.lampid, character)
+end
+
+#####
+##### Board Primitives
+#####
+
+function move_character!(g, c, newpos)
+  curpos = g.char_pos[c]
+  set_character!(g, curpos, 0x0)
+  @assert get_character(g, newpos) == 0x0 # destination must be free
+  set_character!(g, newpos, c)
+  g.char_pos[c] = newpos
+end
+
+function swap_activation(g, src, dst, type, v)
+  @assert get_type(g, src) == type
+  @assert get_type(g, dst) == type
+  @assert get_activated(g, src) == v
+  @assert get_activated(g, dst) == !v
+  set_activated!(g, src, !v)
+  set_activated!(g, dst, v)
+end
+
+function move_cops(g, src, dst)
+  swap_activation(g, src, dest, EXIT, false)
+  delete!(g.cops_pos, src)
+  push!(g.cops_pos, dst)
+end
+
+function move_lid(g, src, dst)
+  swap_activation(g, src, dst, WELL, false)
+  delete!(g.lid_pos, src)
+  push!(g.lid_pos, dst)
+end
+
+function move_lamp(g, src, dst)
+  swap_activation(g, src, dst, LAMP, true)
+  id = get_lampid(g, src)
+  if id > 0
+    # The lamp is numbered
+    set_lampid!(g, src, 0x0)
+    set_lampid!(g, dst, id)
+    g.numbered_lamp_pos[id] = dst
+  else
+    # The lamp is anonymous
+    delete!(g.anon_lamp_pos, src)
+    push!(g.anon_lamp_pos, dst)
+  end
+end
+
+function switch_off_numbered_lamp!(g, num)
+  @assert 1 <= num <= 4
+  pos = g.numbered_lamp_pos[num]
+  @assert !isnothing(pos)
+  g.numbered_lamp_pos[num] = nothing
+  @assert get_activated(g, pos) == true
+  @assert get_lampid(g, pos) == num
+  set_activated!(g, pos, false)
+  set_lampid!(g, pos, 0x0)
+end
+
+function test_moves()
+  g = Game()
+  assert_state_coherence(g)
+  shpos = g.char_pos[SHERLOCK_HOLMES]
+  # Move a character
+  move_character!(g, SHERLOCK_HOLMES, shpos .+ TR)
+  assert_state_coherence(g)
+  # Move numbered lamp L3
+  posl3 = g.numbered_lamp_pos[3]
+  move_lamp(g, posl3, posl3 .+ TR .+ TR .+ BR)
+  assert_state_coherence(g)
+  # Move an anonymous lamp
+  move_lamp(g, g.char_pos[INSPECTOR_LESTRADE] .+ BR, posl3)
+  assert_state_coherence(g)
+  # Move a lid
+  move_lid(g, g.numbered_lamp_pos[1] .+ BB, g.numbered_lamp_pos[4] .+ TR)
+  assert_state_coherence(g)
+  # Switch L1 off
+  switch_off_numbered_lamp!(g, 1)
+  g.turn = 2
+  assert_state_coherence(g)
+end
+
+#####
+##### Initial State
+#####
+
 function pick_characters()
   cs = Character[]
   while length(cs) < 4
@@ -155,11 +259,11 @@ end
 
 function Game()
   status = RUNNING
-  board = INITIAL_BOARD
+  board = initial_board()
   turn = 1
   remchars = pick_characters()
   prevchars = []
-  wldir = DIRECTIONS[3]
+  wldir = BR
   jack = rand(CHARACTERS)
   shcards = filter(!=(jack), CHARACTERS)
   cstatus = [UNKNOWN for c in CHARACTERS]
@@ -167,9 +271,6 @@ function Game()
     status, board, turn, remchars, prevchars, wldir, jack, shcards, cstatus)
 end
 
-#####
-##### Board Primitives
-#####
 
 #####
 ##### Micro Actions
@@ -202,6 +303,8 @@ Cop: move three in total?
 #####
 ##### Exporting in JSON
 #####
+
+test_moves()
 
 using JSON2
 open("game.json", "w") do file

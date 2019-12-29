@@ -51,19 +51,30 @@ const Board = Array{Tile, 2}
 
 const Position = Tuple{Int, Int}
 
+function valid_pos(board, pos)
+  nx, ny = size(board)
+  x, y = pos
+  return (1 <= x <= nx) && (1 <= y <= ny) &&  (x % 2 != y % 2)
+end
+
 """
 To access the neighbor of a tile, just add a direction vector to its position.
 The six following directions are defined:
 
-    D1
-D6      D2
+    TT
+TL      TR
     ##
-D5      D3
-    D4
+BL      BR
+    BB
 """
 const Direction = Tuple{Int, Int}
-const DIRECTIONS =
-  Direction[(-2, 0), (-1, 1), (1, 1), (2, 0), (1, -1), (-1, -1)]
+const TT = (-2, 0)
+const TR = (-1, 1)
+const BR = (1, 1)
+const BB = (2, 0)
+const BL = (1, -1)
+const TL = (-1, -1)
+const DIRECTIONS = Direction[TT, TR, BR, BB, BL, TL]
 
 #####
 ##### Initial Board
@@ -188,3 +199,5 @@ end
 The initial game board
 """
 const INITIAL_BOARD = map(parse_init_tile, BOARD_STR_MATRIX)
+
+initial_board() = copy(INITIAL_BOARD)
