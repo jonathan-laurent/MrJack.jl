@@ -1,0 +1,7 @@
+name = "MrJack"
+uuid = "35d7aa76-1849-4b3b-ac41-4640d556bf86"
+authors = ["Jonathan Laurent <jonathan.laurent@cs.cmu.edu>"]
+version = "0.1.0"
+
+[deps]
+JSON2 = "2535ab7d-5cd8-5a07-80ac-9b1792aadce3"
