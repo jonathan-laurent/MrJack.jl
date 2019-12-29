@@ -28,7 +28,7 @@ mutable struct Game
   anon_lamp_pos :: Set{Position}
   numbered_lamp_pos :: Vector{Union{Position, Nothing}} # Indices: 1-4
   lid_pos :: Set{Position}
-
+  active_wells :: Set{Position}
   function Game(
       status, board, turn, remchars, prevchars, wldir, jack, shcards, cstatus)
     # Dummy initialization for the cache
@@ -37,10 +37,12 @@ mutable struct Game
     anon_lamp_pos = Set()
     numbered_lamp_pos = Union{Position, Nothing}[nothing for i in 1:4]
     lid_pos = Set()
+    active_wells = Set()
     g = new(
       status, board, turn, remchars, prevchars, wldir, jack, shcards, cstatus,
-      char_pos, cops_pos, anon_lamp_pos, numbered_lamp_pos, lid_pos)
-    update_cache!(g)
+      char_pos, cops_pos, anon_lamp_pos, numbered_lamp_pos, lid_pos,
+      active_wells)
+    init_cache!(g)
     assert_state_coherence(g)
     return g
   end
@@ -74,6 +76,11 @@ function assert_board_coherence(g)
     @assert t.type == WELL
     @assert !t.activated
   end
+  for pos in g.active_wells
+    t = g.board[pos...]
+    @assert t.type == WELL
+    @assert t.activated
+  end
   # Assert that the cache is complete
   nx, ny = size(g.board)
   for x in 1:nx
@@ -94,14 +101,18 @@ function assert_board_coherence(g)
           @assert pos ∈ g.anon_lamp_pos
         end
       end
-      if t.type == WELL && !t.activated
-        @assert pos ∈ g.lid_pos
+      if t.type == WELL
+        if t.activated
+          @assert pos ∈ g.active_wells
+        else
+          @assert pos ∈ g.lid_pos
+        end
       end
     end
   end
 end
 
-function update_cache!(g)
+function init_cache!(g)
   nx, ny = size(g.board)
   for x in 1:nx
     for y in 1:ny
@@ -120,8 +131,12 @@ function update_cache!(g)
           push!(g.anon_lamp_pos, pos)
         end
       end
-      if t.type == WELL && !t.activated
-        push!(g.lid_pos, pos)
+      if t.type == WELL
+        if t.activated
+          push!(g.active_wells, pos)
+        else
+          push!(g.lid_pos, pos)
+        end
       end
     end
   end
@@ -190,7 +205,9 @@ end
 function move_lid(g, src, dst)
   swap_activation(g, src, dst, WELL, false)
   delete!(g.lid_pos, src)
+  push!(g.active_wells, src)
   push!(g.lid_pos, dst)
+  delete!(g.active_wells, dst)
 end
 
 function move_lamp(g, src, dst)
@@ -271,42 +288,82 @@ function Game()
     status, board, turn, remchars, prevchars, wldir, jack, shcards, cstatus)
 end
 
-
 #####
-##### Micro Actions
+##### Compute Available Moves
 #####
 
-@enum ActionType MoveCharacter MoveLid MoveLamp OrientWatsonLamp
+# Reachable in 1-4 moves
+# Reachable in 1-3 moves
+# Reachable in exactly k moves
 
-struct Action
+function reachable_zero(pos)
+  @assert valid_pos(INITIAL_BOARD, pos)
+  R = falses(size(INITIAL_BOARD))
+  R[pos...] = true
+  return R
+end
 
+function reachable_transition(R, active_wells; through_houses=false)
+  nx, ny = size(INITIAL_BOARD)
+  Rnext = falses(nx, ny)
+  for x in 1:nx
+    for y in 1:ny
+      pos = (x, y)
+      if R[x, y] # position was reachable the turn before
+        # Move to a neighbor tile
+        for dir in DIRECTIONS
+          newpos = pos .+ dir
+          if valid_pos(INITIAL_BOARD, newpos)
+            t = INITIAL_BOARD[newpos...].type
+            if walkable_tile(t) || (through_houses && t == HOUSE)
+              Rnext[newpos...] = true
+            end
+          end
+        end
+        # Take a well
+        if pos ∈ active_wells
+          for dst in active_wells
+            Rnext[dst...] = true
+          end
+        end
+      end
+    end
+  end
+  return Rnext
+end
+
+function reachable_positions(pos, n, active_wells; through_houses=false)
+  Rs = [reachable_zero(pos)]
+  for i in 1:n
+    Rnext = reachable_transition(
+      Rs[end], active_wells, through_houses=through_houses)
+    push!(Rs, Rnext)
+  end
+  R = reduce(Rs) do R1, R2
+    R1 .| R2
+  end
+  # Cannot stay in place
+  R[pos...] = false
+  return R
+end
+
+function test_reachability()
+  g = Game()
+  R = reachable_positions(g.char_pos[SERGENT_GOODLEY], 3, g.active_wells)
+  cR = count(==(true), R)
+  return cR
 end
 
 #####
-##### Implementing game rules
-#####
-
-#=
-In what situations action to take?
-  - Choose character
-  - Move character
-  - Use special power
-
-Move character from X to Y (flag for arrest?)
-Move lamp
-Change W. lamp orientation
-Move cops
-Move well lid
-Cop: move three in total?
-=#
-
-#####
-##### Exporting in JSON
+##### Main
 #####
 
 test_moves()
+test_reachability()
 
+#=
 using JSON2
 open("game.json", "w") do file
   JSON2.pretty(file, JSON2.write(Game()))
 end
+=#

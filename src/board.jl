@@ -23,6 +23,8 @@ const WELL = 0x4
 const LAMP = 0x5
 const EXIT = 0x6
 
+walkable_tile(tile) = (tile >= FREE)
+
 # Representation fits in 4 bytes
 struct Tile
   type :: TileType
