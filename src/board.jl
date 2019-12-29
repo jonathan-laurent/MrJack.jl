@@ -26,12 +26,12 @@ const EXIT = 0x6
 # Representation fits in 4 bytes
 struct Tile
   type :: TileType
-  status :: Bool  # true/false <-> on/off <-> free/cops (default: false)
+  activated :: Bool  # true/false <-> on/off <-> free/cops (default: false)
   lampid :: UInt8  # 1, 2, 3, 4, 0 (none)
   character :: Character
 end
 
-Tile(type, status=false) = Tile(type, status, 0x0, 0x0)
+Tile(type, activated=false) = Tile(type, activated, 0x0, 0x0)
 
 #####
 ##### Board Definition
@@ -49,6 +49,8 @@ A position is represented as a `(X, Y)` coordinates pair:
 """
 const Board = Array{Tile, 2}
 
+const Position = Tuple{Int, Int}
+
 """
 To access the neighbor of a tile, just add a direction vector to its position.
 The six following directions are defined:
@@ -62,7 +64,6 @@ D5      D3
 const Direction = Tuple{Int, Int}
 const DIRECTIONS =
   Direction[(-2, 0), (-1, 1), (1, 1), (2, 0), (1, -1), (-1, -1)]
-
 
 #####
 ##### Initial Board
@@ -98,11 +99,11 @@ const BOARD_STR =
 """
     E+      ##      W+      ##      ##      E-
 ##      ##      WG      ..      ##      ##      ##
-    ..      ##      L-      ..      ##      W-
+    ..      **      L-      ..      ##      W-
 ##      L3      ..      ..      ..      ..      ..
     W+      ..      **      **      ..      L2
 ..      ..      ..      JS      ..      ..      ..
-    **      **      ..      L1      **      ..
+    **      **      ..      L-      **      ..
 ..      **      ..      ..      JB      W+      SG
     **      ..      **      **      ..      **
 MS      W+      IL      W+      ..      **      ..
@@ -170,7 +171,7 @@ function parse_init_tile(s)
     else
       n = parse(UInt8, s[2])
       @assert 1 <= n <= 4
-      return Tile(LAMP, false, n, 0x0)
+      return Tile(LAMP, true, n, 0x0)
     end
   elseif s[1] == 'W'
     @assert s[2] ∈ ['+', '-']
