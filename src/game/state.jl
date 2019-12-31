@@ -1,5 +1,3 @@
-include("board.jl")
-
 #####
 ##### Game Status
 #####
@@ -65,82 +63,25 @@ end
 end
 
 #####
-##### Game Actions
+##### Detectives knowledge
 #####
 
-abstract type AbstractAction end
+"""
+    CharacterStatus
 
-# Chance actions
-
-abstract type ChanceAction <: AbstractAction end
-
-struct SelectJack <: ChanceAction
-  jack :: Character
-end
-
-struct SelectPlayable <: ChanceAction
-  playable :: Vector{Character}
-end
-
-struct SelectSherlockCard <: ChanceAction
-  innocent :: Character
-end
-
-# Play actions
-
-struct SelectCharacter <: AbstractAction
-  character :: Character
-end
-
-struct MoveCharacter <: AbstractAction
-  character :: Character
-  dst :: Position
-end
-
-struct Accusation <: AbstractAction
-  accuser :: Character
-  accused :: Character
-end
-
-# Power moves
-
-abstract type PowerMove <: AbstractAction end
-
-struct AskSherlock <: PowerMove end
-
-struct ReorientWatsonLight <: PowerMove
-  dir :: Direction
-end
-
-struct MoveLamp <: PowerMove
-  src :: Position
-  dst :: Position
-end
-
-struct MoveCops <: PowerMove
-  src :: Position
-  dst :: Position
-end
-
-struct MoveLid <: PowerMove
-  src :: Position
-  dst :: Position
-end
-
-struct SergentGoodley <: PowerMove
-  moves :: Vector{Tuple{Character, Position}}
-end
-
-struct SwapWilliamGull <: PowerMove
-  other :: Character
-end
+Detectives knowledge about a character.
+  - `UNKNOWN`: the detectives have no information
+  - `GUILTY`: the detectives know that the character is guilty and are
+     therefore make an accusation.
+  - `INNOCENT_CK`: it is common knowledge that the character is innocent.
+  - `INNOCENT_HI`: the detectives know that the character is innocent but
+     Jack does not know that the detective know.
+"""
+@enum CharacterStatus UNKNOWN GUILTY INNOCENT_CK INNOCENT_HI
 
 #####
 ##### Game State
 #####
-
-# CK: common knowledge, HI: hidden information
-@enum CharacterStatus UNKNOWN GUILTY INNOCENT_CK INNOCENT_HI
 
 mutable struct Game
   status :: GameStatus
@@ -187,6 +128,10 @@ mutable struct Game
   end
 end
 
+#####
+##### Simple utilities
+#####
+
 sherlock_cards(game) = game.shcards
 used_move(game) = game.used_move
 used_power(game) = game.used_power
@@ -214,6 +159,10 @@ function playable_characters(game)
   @assert !isempty(game.remchars)
   return game.remchars
 end
+
+#####
+##### Cache management and state coherence
+#####
 
 function assert_board_coherence(g)
   # Assert that all items listed in cache are in the right place (soundness)
@@ -436,201 +385,4 @@ function test_moves()
   switch_off_numbered_lamp!(g, 1)
   g.turn = 2
   assert_state_coherence(g)
-end
-
-#####
-##### Visibility
-#####
-
-function make_neighborhood_visible!(V, pos)
-  for dir in DIRECTIONS
-    npos = pos .+ dir
-    if valid_pos(INITIAL_BOARD, npos)
-      V[pos...] = true
-    end
-  end
-end
-
-function use_watson_light!(V, wpos, wldir)
-  pos = wpos .+ wldir
-  while walkable_tile(INITIAL_BOARD[pos...].type)
-    V[pos...] = true
-    pos = pos .+ wldir
-  end
-end
-
-function visible_by_lamp(game)
-  V = falses(size(game.board))
-  for pos in game.anon_lamp_pos
-    make_neighborhood_visible!(V, pos)
-  end
-  for pos in game.numbered_lamp_pos
-    if !isnothing(pos)
-      make_neighborhood_visible!(V, pos)
-    end
-  end
-  wlpos = game.char_pos[JOHN_WATSON |> Int]
-  use_watson_light!(V, wlpos, game.wldir)
-  return V
-end
-
-function visible_by_someone(game)
-  V = falses(size(game.board))
-  for pos in game.char_pos
-    make_neighborhood_visible!(V, pos)
-  end
-  return V
-end
-
-visibility_mask(game) = visible_by_lamp(game) .| visible_by_someone(game)
-
-function update_visible!(game)
-  V = visibility_mask(game)
-  for c in CHARACTERS
-    pos = game.char_pos[Int(c)]
-    game.visible[Int(c)] = V[pos...]
-  end
-end
-
-#####
-##### Initial State
-#####
-
-function pick_characters()
-  cs = Set{Character}()
-  while length(cs) < 4
-    c = rand(CHARACTERS)
-    if c ∉ cs
-      push!(cs, c)
-    end
-  end
-  return cs
-end
-
-function Game()
-  status = SELECTING_CHARACTER
-  board = initial_board()
-  turn = 1
-  remchars = pick_characters()
-  prevchars = []
-  selected = NO_CHARACTER
-  used_power = false
-  used_move = false
-  wldir = BR
-  jack = rand(CHARACTERS)
-  shcards = Set{Character}(filter(!=(jack), CHARACTERS))
-  cstatus = [UNKNOWN for c in CHARACTERS]
-  visible = falses(length(CHARACTERS)) # Dummy
-  g = Game(
-    status, board, turn, remchars, prevchars, selected, used_power, used_move,
-    wldir, jack, shcards, cstatus, visible)
-  update_visible!(g)
-  return g
-end
-
-#####
-##### Compute Available Moves
-#####
-
-function reachable_zero(pos)
-  @assert valid_pos(INITIAL_BOARD, pos)
-  R = falses(size(INITIAL_BOARD))
-  R[pos...] = true
-  return R
-end
-
-function reachable_transition(R, active_wells; through_houses=false)
-  nx, ny = size(INITIAL_BOARD)
-  Rnext = falses(nx, ny)
-  for x in 1:nx
-    for y in 1:ny
-      pos = (x, y)
-      if R[x, y] # position was reachable the turn before
-        # Move to a neighbor tile
-        for dir in DIRECTIONS
-          newpos = pos .+ dir
-          if valid_pos(INITIAL_BOARD, newpos)
-            t = INITIAL_BOARD[newpos...].type
-            if walkable_tile(t) || (through_houses && t == HOUSE)
-              Rnext[newpos...] = true
-            end
-          end
-        end
-        # Take a well
-        if pos ∈ active_wells
-          for dst in active_wells
-            Rnext[dst...] = true
-          end
-        end
-      end
-    end
-  end
-  return Rnext
-end
-
-function reachable_positions(pos, n, active_wells; through_houses=false)
-  Rs = [reachable_zero(pos)]
-  for i in 1:n
-    Rnext = reachable_transition(
-      Rs[end], active_wells, through_houses=through_houses)
-    push!(Rs, Rnext)
-  end
-  R = reduce(Rs) do R1, R2
-    R1 .| R2
-  end
-  # The character has to end on a street tile
-  R .&= STREET_TILES
-  # Cannot stay in place
-  R[pos...] = false
-  return R
-end
-
-function test_reachability()
-  g = Game()
-  R = reachable_positions(g.char_pos[SERGENT_GOODLEY |> Int], 3, g.active_wells)
-  cR = count(==(true), R)
-  return cR
-end
-
-#####
-##### Export to JSON
-#####
-
-import JSON
-
-struct InterfaceGameRepresentation
-  g :: Game
-end
-
-function lower_character_dict(v)
-  Dict([string(c) => v[Int(c)] for c in CHARACTERS])
-end
-
-function JSON.lower(r::InterfaceGameRepresentation)
-  return Dict(
-    "status" => r.g.status,
-    "board" => r.g.board,
-    "turn" => r.g.turn,
-    "remchars" => r.g.remchars,
-    "prev_chars" => r.g.prevchars,
-    "selected" => r.g.selected,
-    "used_power" => r.g.used_power,
-    "used_move" => r.g.used_move,
-    "wldir" => r.g.wldir,
-    "jack" => r.g.jack,
-    "shcards" => r.g.shcards,
-    "cstatus" => lower_character_dict(r.g.cstatus),
-    "visible" => lower_character_dict(r.g.visible)),
-    "visibility_mask" => visibility_mask(r.g)
-end
-
-#####
-##### Main
-#####
-
-test_moves()
-test_reachability()
-open("game.json", "w") do file
-  repr = InterfaceGameRepresentation(Game())
-  JSON.print(file, repr, 2)
 end
