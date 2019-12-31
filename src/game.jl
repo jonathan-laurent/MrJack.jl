@@ -1,10 +1,143 @@
 include("board.jl")
 
 #####
-##### Game State
+##### Game Status
 #####
 
-@enum GameStatus RUNNING JACK_ESCAPED JACK_CAPTURED TIMEOUT
+"""
+    GameStatus
+
+The game can be in the following status.
+
+# Endgame Status
+
+  - `JACK_ESCAPED`: Jack escaped and won the game
+  - `JACK_CAPTURED`: the detectives captures Mr. Jack
+  - `WRONG_ACCUSATION`: the incorrect person was accused and Mr. Jack won
+  - `TIMEOUT`: the detectives failed to capture Mr. Jack within 8 turns
+
+# Chance Status
+
+These status are used to indicate that a random decision is waiting to be made.
+
+  - `PICKING_JACK`: Jack has to be picked among all possible characters.
+     Answer with an action of type [`SelectJack`](@ref).
+  - `PICKING_PLAYABLE_CHARACTERS`: Four playable characters have to be picked
+     randomly. Answer with an action of type [`SelectPlayable`](@ref).
+  - `PICKING_SHERLOCK_CARD`: A card proving a player innocent has to be drawn
+     from the set described by `sherlock_cards(state)`.
+     Answer with an action of type [`SelectSherlockCard`](@ref).
+
+# Playing Characters
+
+When either the detectives or Sherlock has to play and the game is still
+running, the status is `SELECTING_CHARACTER` or `PLAYING_CHARACTER`.
+
+At first, the status should be `SELECTING_CHARACTER`.
+  - To access the current player, use `current_player(state)`
+  - To access the set of playable characters, use `playable_characters(state)`
+This status should be answered with action [`SelectCharacter`](@ref).
+
+After this, the status should become `PLAYING_CHARACTER`. This status
+must be answered by actions of type [`MoveCharacter`](@ref),
+[`PowerMove`](@ref) or [`Accusation`](@ref).
+  - To know if the character already used its power, use `power_used(state)`
+  - To know if the character already moves, use `used_move(state)`
+"""
+@enum GameStatus begin
+  # Endgames
+  JACK_ESCAPED
+  JACK_CAPTURED
+  TIMEOUT
+  # Chance states
+  PICKING_JACK
+  PICKING_PLAYABLE_CHARACTERS
+  PICKING_SHERLOCK_CARD
+  # Play states
+  SELECTING_CHARACTER
+  PLAYING_CHARACTER
+end
+
+@enum Player begin
+  DETECTIVES
+  JACK
+  CHANCE
+end
+
+#####
+##### Game Actions
+#####
+
+abstract type AbstractAction end
+
+# Chance actions
+
+abstract type ChanceAction <: AbstractAction end
+
+struct SelectJack <: ChanceAction
+  jack :: Character
+end
+
+struct SelectPlayable <: ChanceAction
+  playable :: Vector{Character}
+end
+
+struct SelectSherlockCard <: ChanceAction
+  innocent :: Character
+end
+
+# Play actions
+
+struct SelectCharacter <: AbstractAction
+  character :: Character
+end
+
+struct MoveCharacter <: AbstractAction
+  character :: Character
+  dst :: Position
+end
+
+struct Accusation <: AbstractAction
+  accuser :: Character
+  accused :: Character
+end
+
+# Power moves
+
+abstract type PowerMove <: AbstractAction end
+
+struct AskSherlock <: PowerMove end
+
+struct ReorientWatsonLight <: PowerMove
+  dir :: Direction
+end
+
+struct MoveLamp <: PowerMove
+  src :: Position
+  dst :: Position
+end
+
+struct MoveCops <: PowerMove
+  src :: Position
+  dst :: Position
+end
+
+struct MoveLid <: PowerMove
+  src :: Position
+  dst :: Position
+end
+
+struct SergentGoodley <: PowerMove
+  moves :: Vector{Tuple{Character, Position}}
+end
+
+struct SwapWilliamGull <: PowerMove
+  other :: Character
+end
+
+#####
+##### Game State
+#####
 
 # CK: common knowledge, HI: hidden information
 @enum CharacterStatus UNKNOWN GUILTY INNOCENT_CK INNOCENT_HI
@@ -14,14 +147,18 @@ mutable struct Game
   board :: Board
   turn :: UInt8
   # Turn stage
-  remchars :: Vector{Character} # Remaining characters
+  remchars :: Set{Character} # Remaining characters
   prevchars :: Vector{Character} # Previously controlled characters
+  selected :: Character # Only meaningful if `status == PLAYING_CHARACTER`
+  used_power :: Bool # idem
+  used_move :: Bool # idem
   # Watson lamp's direction
   wldir :: Direction
   # Who is who and who knows what?
   jack :: Character
-  shcards :: Vector{Character} # Sherlock innocent cards
-  cstatus :: Vector{CharacterStatus}
+  shcards :: Set{Character} # Sherlock innocent cards
+  cstatus :: Vector{CharacterStatus} # Indices: character numbers
+  visible :: BitVector # idem
   # Cached information: where are things
   char_pos :: Vector{Position}
   cops_pos :: Set{Position}
@@ -30,7 +167,8 @@ mutable struct Game
   lid_pos :: Set{Position}
   active_wells :: Set{Position}
   function Game(
-      status, board, turn, remchars, prevchars, wldir, jack, shcards, cstatus)
+      status, board, turn, remchars, prevchars, selected, used_power, used_move,
+      wldir, jack, shcards, cstatus, visible)
     # Dummy initialization for the cache
     char_pos = Position[(0, 0) for c in CHARACTERS]
     cops_pos = Set()
@@ -39,19 +177,48 @@ mutable struct Game
     lid_pos = Set()
     active_wells = Set()
     g = new(
-      status, board, turn, remchars, prevchars, wldir, jack, shcards, cstatus,
-      char_pos, cops_pos, anon_lamp_pos, numbered_lamp_pos, lid_pos,
-      active_wells)
+      status, board, turn, remchars, prevchars, selected, used_power, used_move,
+      wldir, jack, shcards, cstatus, visible,
+      char_pos, cops_pos, anon_lamp_pos,
+      numbered_lamp_pos, lid_pos, active_wells)
     init_cache!(g)
     assert_state_coherence(g)
     return g
   end
 end
 
+sherlock_cards(game) = game.shcards
+used_move(game) = game.used_move
+used_power(game) = game.used_power
+
+function is_chance_node(game)
+  return game.status ∈ [
+    PICKING_JACK,
+    PICKING_PLAYABLE_CHARACTERS,
+    PICKING_SHERLOCK_CARD]
+end
+
+function current_player(game)
+  @assert game.status == PLAYING
+  n = length(sh.prevchars) + 1 # Turn stage as a number in {1..4}
+  @assert 1 <= n <= 4
+  if game.turn % 2 == 1
+    return (n == 1 || n == 4) ? DETECTIVES : JACK
+  else
+    return (n == 2 || n == 3) ? DETECTIVES : JACK
+  end
+end
+
+function playable_characters(game)
+  @assert game.status == PLAYING
+  @assert !isempty(game.remchars)
+  return game.remchars
+end
+
 function assert_board_coherence(g)
   # Assert that all items listed in cache are in the right place (soundness)
   for (i, pos) in enumerate(g.char_pos)
-    @assert g.board[pos...].character == i
+    @assert g.board[pos...].character == Character(i)
   end
   for pos in g.cops_pos
     t = g.board[pos...]
@@ -88,8 +255,8 @@ function assert_board_coherence(g)
       pos = (x, y)
       t = g.board[x, y]
       @assert (t.type != INVALID) == valid_pos(g.board, pos)
-      if t.character > 0
-        @assert g.char_pos[t.character] == pos
+      if t.character != NO_CHARACTER
+        @assert g.char_pos[t.character |> Int] == pos
       end
       if t.type == EXIT && !t.activated
         @assert pos ∈ g.cops_pos
@@ -118,8 +285,8 @@ function init_cache!(g)
     for y in 1:ny
       pos = (x, y)
       t = g.board[x, y]
-      if t.character > 0
-        g.char_pos[t.character] = pos
+      if t.character != NO_CHARACTER
+        g.char_pos[t.character |> Int] = pos
       end
       if t.type == EXIT && !t.activated
         push!(g.cops_pos, pos)
@@ -180,11 +347,20 @@ end
 #####
 
 function move_character!(g, c, newpos)
-  curpos = g.char_pos[c]
-  set_character!(g, curpos, 0x0)
-  @assert get_character(g, newpos) == 0x0 # destination must be free
+  curpos = g.char_pos[c |> Int]
+  set_character!(g, curpos, NO_CHARACTER)
+  @assert get_character(g, newpos) == NO_CHARACTER # destination must be free
   set_character!(g, newpos, c)
-  g.char_pos[c] = newpos
+  g.char_pos[c |> Int] = newpos
+end
+
+function swap_characters(g, c1, c2)
+  tmp = (1, 1) # Inaccessible position that is only used for the switch
+  pos1 = g.char_pos[c1 |> Int]
+  pos2 = g.char_pos[c2 |> Int]
+  move_character!(g, c1, tmp)
+  move_character!(g, c2, pos1)
+  move_character!(g, c1, pos2)
 end
 
 function swap_activation(g, src, dst, type, v)
@@ -239,16 +415,19 @@ end
 function test_moves()
   g = Game()
   assert_state_coherence(g)
-  shpos = g.char_pos[SHERLOCK_HOLMES]
+  shpos = g.char_pos[SHERLOCK_HOLMES |> Int]
   # Move a character
   move_character!(g, SHERLOCK_HOLMES, shpos .+ TR)
+  assert_state_coherence(g)
+  # Swap two characters
+  swap_characters(g, WILLIAM_GULL, MISS_STEALTHY)
   assert_state_coherence(g)
   # Move numbered lamp L3
   posl3 = g.numbered_lamp_pos[3]
   move_lamp(g, posl3, posl3 .+ TR .+ TR .+ BR)
   assert_state_coherence(g)
   # Move an anonymous lamp
-  move_lamp(g, g.char_pos[INSPECTOR_LESTRADE] .+ BR, posl3)
+  move_lamp(g, g.char_pos[INSPECTOR_LESTRADE |> Int] .+ BR, posl3)
   assert_state_coherence(g)
   # Move a lid
   move_lid(g, g.numbered_lamp_pos[1] .+ BB, g.numbered_lamp_pos[4] .+ TR)
@@ -260,11 +439,19 @@ function test_moves()
 end
 
 #####
+##### Visibility
+#####
+
+function update_visible!(game)
+  #TODO
+end
+
+#####
 ##### Initial State
 #####
 
 function pick_characters()
-  cs = Character[]
+  cs = Set{Character}()
   while length(cs) < 4
     c = rand(CHARACTERS)
     if c ∉ cs
@@ -275,26 +462,29 @@ function pick_characters()
 end
 
 function Game()
-  status = RUNNING
+  status = SELECTING_CHARACTER
   board = initial_board()
   turn = 1
   remchars = pick_characters()
   prevchars = []
+  selected = NO_CHARACTER
+  used_power = false
+  used_move = false
   wldir = BR
   jack = rand(CHARACTERS)
-  shcards = filter(!=(jack), CHARACTERS)
+  shcards = Set{Character}(filter(!=(jack), CHARACTERS))
   cstatus = [UNKNOWN for c in CHARACTERS]
-  return Game(
-    status, board, turn, remchars, prevchars, wldir, jack, shcards, cstatus)
+  visible = falses(length(CHARACTERS)) # Dummy
+  g = Game(
+    status, board, turn, remchars, prevchars, selected, used_power, used_move,
+    wldir, jack, shcards, cstatus, visible)
+  update_visible!(g)
+  return g
 end
 
 #####
 ##### Compute Available Moves
 #####
-
-# Reachable in 1-4 moves
-# Reachable in 1-3 moves
-# Reachable in exactly k moves
 
 function reachable_zero(pos)
   @assert valid_pos(INITIAL_BOARD, pos)
@@ -342,6 +532,8 @@ function reachable_positions(pos, n, active_wells; through_houses=false)
   R = reduce(Rs) do R1, R2
     R1 .| R2
   end
+  # The character has to end on a street tile
+  R .&= STREET_TILES
   # Cannot stay in place
   R[pos...] = false
   return R
@@ -349,9 +541,40 @@ end
 
 function test_reachability()
   g = Game()
-  R = reachable_positions(g.char_pos[SERGENT_GOODLEY], 3, g.active_wells)
+  R = reachable_positions(g.char_pos[SERGENT_GOODLEY |> Int], 3, g.active_wells)
   cR = count(==(true), R)
   return cR
+end
+
+#####
+##### Export to JSON
+#####
+
+import JSON
+
+struct InterfaceGameRepresentation
+  g :: Game
+end
+
+function lower_character_dict(v)
+  Dict([string(c) => v[Int(c)] for c in CHARACTERS])
+end
+
+function JSON.lower(r::InterfaceGameRepresentation)
+  return Dict(
+    "status" => r.g.status,
+    "board" => r.g.board,
+    "turn" => r.g.turn,
+    "remchars" => r.g.remchars,
+    "prev_chars" => r.g.prevchars,
+    "selected" => r.g.selected,
+    "used_power" => r.g.used_power,
+    "used_move" => r.g.used_move,
+    "wldir" => r.g.wldir,
+    "jack" => r.g.jack,
+    "shcards" => r.g.shcards,
+    "cstatus" => lower_character_dict(r.g.cstatus),
+    "visible" => lower_character_dict(r.g.visible))
 end
 
 #####
@@ -360,10 +583,7 @@ end
 
 test_moves()
 test_reachability()
-
-#=
-using JSON2
 open("game.json", "w") do file
-  JSON2.pretty(file, JSON2.write(Game()))
+  repr = InterfaceGameRepresentation(Game())
+  JSON.print(file, repr, 2)
 end
-=#

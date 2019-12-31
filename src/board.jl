@@ -2,28 +2,33 @@
 ##### Tile Definition
 #####
 
-# Characters
-const Character = UInt8
-const SHERLOCK_HOLMES = 0x1
-const JEREMY_BERT = 0x2
-const WILLIAM_GULL = 0x3
-const JOHN_WATSON = 0x4
-const INSPECTOR_LESTRADE = 0x5
-const MISS_STEALTHY = 0x6
-const JOHN_SMITH = 0x7
-const SERGENT_GOODLEY = 0x8
-const CHARACTERS = Vector{Character}(1:8)
+# It is important that real characters have indices from 1 to 8 as these
+# numbers are used to index arrays
+@enum Character begin
+  NO_CHARACTER = 0
+  SHERLOCK_HOLMES = 1
+  JEREMY_BERT = 2
+  WILLIAM_GULL = 3
+  JOHN_WATSON = 4
+  INSPECTOR_LESTRADE = 5
+  MISS_STEALTHY = 6
+  JOHN_SMITH = 7
+  SERGENT_GOODLEY = 8
+end
 
-const TileType = UInt8
-const INVALID = 0x0 # see board encoding
-const OUT_OF_BOUNDS = 0x1
-const HOUSE = 0x2
-const FREE = 0x3
-const WELL = 0x4
-const LAMP = 0x5
-const EXIT = 0x6
+const CHARACTERS = collect(instances(Character))[2:end]
 
-walkable_tile(tile) = (tile >= FREE)
+@enum TileType begin
+  INVALID = 0
+  OUT_OF_BOUNDS = 1
+  HOUSE = 2
+  FREE = 3
+  WELL = 4
+  LAMP = 5
+  EXIT = 6
+end
+
+walkable_tile(tile) = (Int(tile) >= 3)
 
 # Representation fits in 4 bytes
 struct Tile
@@ -33,7 +38,7 @@ struct Tile
   character :: Character
 end
 
-Tile(type, activated=false) = Tile(type, activated, 0x0, 0x0)
+Tile(type, activated=false) = Tile(type, activated, 0x0, NO_CHARACTER)
 
 #####
 ##### Board Definition
@@ -184,7 +189,7 @@ function parse_init_tile(s)
     else
       n = parse(UInt8, s[2])
       @assert 1 <= n <= 4
-      return Tile(LAMP, true, n, 0x0)
+      return Tile(LAMP, true, n, NO_CHARACTER)
     end
   elseif s[1] == 'W'
     @assert s[2] ∈ ['+', '-']
@@ -203,3 +208,8 @@ The initial game board
 const INITIAL_BOARD = map(parse_init_tile, BOARD_STR_MATRIX)
 
 initial_board() = copy(INITIAL_BOARD)
+
+const STREET_TILES =
+  map(INITIAL_BOARD) do t
+    walkable_tile(t.type)
+  end |> BitArray
