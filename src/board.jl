@@ -4,7 +4,7 @@
 
 # It is important that real characters have indices from 1 to 8 as these
 # numbers are used to index arrays
-@enum Character begin
+@enum Character :: UInt8 begin
   NO_CHARACTER = 0
   SHERLOCK_HOLMES = 1
   JEREMY_BERT = 2
@@ -18,17 +18,17 @@ end
 
 const CHARACTERS = collect(instances(Character))[2:end]
 
-@enum TileType begin
+@enum TileType :: UInt8 begin
   INVALID = 0
   OUT_OF_BOUNDS = 1
-  HOUSE = 2
-  FREE = 3
-  WELL = 4
-  LAMP = 5
+  LAMP = 2
+  HOUSE = 3
+  FREE = 4
+  WELL = 5
   EXIT = 6
 end
 
-walkable_tile(tile) = (Int(tile) >= 3)
+walkable_tile(tile) = (Int(tile) >= 4)
 
 # Representation fits in 4 bytes
 struct Tile
