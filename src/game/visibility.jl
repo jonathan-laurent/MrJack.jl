@@ -6,7 +6,7 @@ function make_neighborhood_visible!(V, pos)
   for dir in DIRECTIONS
     npos = pos .+ dir
     if valid_pos(INITIAL_BOARD, npos)
-      V[pos...] = true
+      V[npos...] = true
     end
   end
 end
