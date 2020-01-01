@@ -1,7 +1,7 @@
 module MrJack
 
 export Game
-export CHARACTERS
+export CHARACTERS, Character
 export SHERLOCK_HOLMES, JEREMY_BERT, WILLIAM_GULL, JOHN_WATSON
 export INSPECTOR_LESTRADE, MISS_STEALTHY, JOHN_SMITH, SERGENT_GOODLEY
 export DIRECTIONS, TT, TR, BR, BB, BL, TL
@@ -23,11 +23,15 @@ export JACK_CAPTURED, JACK_ESCAPED, WRONG_ACCUSATION, TIMEOUT
 export PICKING_JACK, PICKING_PLAYABLE_CHARACTERS, PICKING_SHERLOCK_CARD
 export SELECTING_CHARACTER, PLAYING_CHARACTER
 
+export InterfaceGameRepresentation
+
 include("game/board.jl")
 include("game/state.jl")
 include("game/reachability.jl")
 include("game/visibility.jl")
 include("game/actions.jl")
 include("game/rules.jl")
+
+include("board_json.jl")
 
 end
