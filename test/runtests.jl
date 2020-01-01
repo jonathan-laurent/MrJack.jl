@@ -26,6 +26,14 @@ using MrJack
   g.turn = 2
   MrJack.assert_state_coherence(g)
   @test true
+  # Testing multiple moves
+  g = Game()
+  MrJack.move_character!(g, JEREMY_BERT, shpos .+ TR)
+  MrJack.assert_state_coherence(g)
+  MrJack.move_characters!(g, [
+    (JEREMY_BERT, shpos .+ TR .+ TR),
+    (SHERLOCK_HOLMES, shpos .+ TR)])
+  @test true
 end
 
 @testset "Testing reachability" begin
@@ -97,4 +105,43 @@ end
   do!(Escape(exit1))
   @assert g.status == JACK_ESCAPED
   cant(AskSherlock())
+end
+
+@testset "Testing Goodley's whistle" begin
+  g = Game()
+  @noinline function do!(a)
+    @test valid_action(g, a)
+    play!(g, a)
+    MrJack.assert_state_coherence(g)
+  end
+  @noinline function cant(a)
+    @test !valid_action(g, a)
+  end
+  do!(SelectJack(SHERLOCK_HOLMES))
+  playable = Set([SERGENT_GOODLEY, JOHN_WATSON, JEREMY_BERT, JOHN_SMITH])
+  do!(SelectPlayable(playable))
+  do!(SelectCharacter(SERGENT_GOODLEY))
+  shpos = g.char_pos[Int(SHERLOCK_HOLMES)]
+  cant(UseWhistle([(SHERLOCK_HOLMES, shpos .+ BB)])) # Get further from SG
+  cant(UseWhistle([(SHERLOCK_HOLMES, shpos .+ TR .+ TR .+ TR .+ TR)]))
+  cant(UseWhistle([(SHERLOCK_HOLMES, shpos)]))
+  cant(UseWhistle([ # Two destinations cannot be the same
+    (SHERLOCK_HOLMES, shpos .+ 2 .* TR),
+    (JEREMY_BERT, shpos .+ 2 .* TR)]))
+  cant(UseWhistle([ # Four moves needed
+    (SHERLOCK_HOLMES, shpos .+ 2 .* TR),
+    (JEREMY_BERT, shpos .+ 4 .* TR)]))
+  do!(UseWhistle([
+    (SHERLOCK_HOLMES, shpos .+ 2 .* TR),
+    (JEREMY_BERT, shpos .+ 3 .* TR)]))
+end
+
+@testset "Adjacency and distance matrices" begin
+  A = MrJack.adjacency_matrix()
+  @test A == permutedims(A, [3, 4, 1, 2]) # Tha adjacency matrix is symmetric
+  n = count(MrJack.STREET_TILES)
+  d = sum(Int.(A)) / n # Average degree
+  @test 2 <= d <= 3
+  D = MrJack.distances_matrix()
+  @test count(==(0x00), D) == 0
 end

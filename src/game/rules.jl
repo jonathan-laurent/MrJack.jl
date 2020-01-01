@@ -23,11 +23,12 @@ const CHARACTER_POWER_MODE = Dict(
 
 # Utilities
 
-function valid_character_move(game, char, dst, escape=false, maxd=nothing)
-  src = game.char_pos[Int(game.selected)]
+function valid_character_move(game, char, dst,
+    escape=false, maxd=nothing, wells=game.active_wells)
+  src = game.char_pos[Int(char)]
   ms = (char == MISS_STEALTHY)
   d = isnothing(maxd) ? (ms ? 4 : 3) : maxd
-  R = reachable_positions(src, d, game.active_wells, all_tiles=ms)
+  R = reachable_positions(src, d, wells, all_tiles=ms)
   return R[dst...] && (!(get_type(game, dst) == EXIT) || escape)
 end
 
@@ -106,6 +107,7 @@ valid_character_action(game, action) = false
 function valid_character_action(game, action::MoveCharacter)
   @assert game.status == PLAYING_CHARACTER
   move_available(game) || (return false)
+  get_character(game, action.dst) == NO_CHARACTER || (return false)
   return valid_character_move(game, game.selected, action.dst)
 end
 
@@ -164,7 +166,42 @@ end
 
 function valid_character_action(game, action::UseWhistle)
   game.selected == SERGENT_GOODLEY || (return false)
-  return true # TODO
+  srcs = map(action.moves) do (c, dst)
+    game.char_pos[Int(c)]
+  end
+  # There should not be multiple characters on a single tile
+  for (c, dst) in action.moves
+    if get_character(game, dst) != NO_CHARACTER && dst ∉ srcs
+      return false
+    end
+  end
+  # Characters should get closer to Sgt. Goodley
+  goodley = game.char_pos[Int(SERGENT_GOODLEY)]
+  for ((c, dst), src) in zip(action.moves, srcs)
+    dsrc = DISTANCES_MATRIX[src..., goodley...]
+    ddst = DISTANCES_MATRIX[dst..., goodley...]
+    if ddst >= dsrc
+      #@show (c, src, dst)
+      #@show goodley
+      #@show (c, dsrc, ddst)
+      return false
+    end
+  end
+  # The total number of tiles moved must be at most 3
+  n = length(action.moves)
+  if n == 1
+    dss = [[3]]
+  elseif n == 2
+    dss = [[1, 2], [2, 1]]
+  else
+    @assert d == 3
+    dss = [[1, 1, 1]]
+  end
+  return any(dss) do ds
+    all(zip(action.moves, ds)) do ((c, dst), d)
+      valid_character_move(game, c, dst, false, d, [])
+    end
+  end
 end
 
 #####
@@ -302,7 +339,7 @@ function play_power_move!(game, action::SwapWilliamGull)
 end
 
 function play_power_move!(game, action::UseWhistle)
-  return # TODO
+  move_characters!(game, action.moves)
 end
 
 #####

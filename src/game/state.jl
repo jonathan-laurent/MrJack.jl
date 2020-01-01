@@ -311,6 +311,18 @@ function move_character!(g, c, newpos)
   g.char_pos[c |> Int] = newpos
 end
 
+function move_characters!(g, moves)
+  for (c, dst) in moves
+    src = g.char_pos[c |> Int]
+    set_character!(g, src, NO_CHARACTER)
+  end
+  for (c, dst) in moves
+    @assert get_character(g, dst) == NO_CHARACTER
+    set_character!(g, dst, c)
+    g.char_pos[c |> Int] = dst
+  end
+end
+
 function swap_characters!(g, c1, c2)
   tmp = (1, 1) # Inaccessible position that is only used for the switch
   pos1 = g.char_pos[c1 |> Int]

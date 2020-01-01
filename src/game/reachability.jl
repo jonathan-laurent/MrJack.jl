@@ -54,3 +54,50 @@ function reachable_positions(pos, n, active_wells; all_tiles=false)
   R[pos...] = false
   return R
 end
+
+function foreach_walkable_tile(f)
+  nx, ny = size(INITIAL_BOARD)
+  for y in 1:ny
+    for x in 1:nx
+      pos = (x, y)
+      if STREET_TILES[pos...]
+        f(pos)
+      end
+    end
+  end
+end
+
+#####
+##### Distance matrix with Floyd-Warshall
+#####
+
+function adjacency_matrix()
+  nx, ny = size(INITIAL_BOARD)
+  let A = zeros(UInt8, nx, ny, nx, ny)
+    foreach_walkable_tile() do pos
+      for dir in DIRECTIONS
+        npos = pos .+ dir
+        if valid_pos(INITIAL_BOARD, npos) && STREET_TILES[npos...]
+          A[pos..., npos...] = 1
+        end
+      end
+    end
+    return A
+  end
+end
+
+function distances_matrix()
+  let W = adjacency_matrix()
+    W[W .== 0] .= typemax(eltype(W)) >> 1
+    foreach_walkable_tile() do k
+      foreach_walkable_tile() do i
+        foreach_walkable_tile() do j
+          W[i..., j...] = min(W[i..., j...], W[i..., k...] + W[k..., j...])
+        end
+      end
+    end
+    return W
+  end
+end
+
+const DISTANCES_MATRIX = distances_matrix()
