@@ -54,10 +54,3 @@ function reachable_positions(pos, n, active_wells; all_tiles=false)
   R[pos...] = false
   return R
 end
-
-function test_reachability()
-  g = Game()
-  R = reachable_positions(g.char_pos[SERGENT_GOODLEY |> Int], 3, g.active_wells)
-  cR = count(==(true), R)
-  return cR
-end

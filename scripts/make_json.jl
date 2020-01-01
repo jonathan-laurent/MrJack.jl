@@ -1,14 +1,8 @@
-include("board.jl")
-include("state.jl")
-include("reachability.jl")
-include("visibility.jl")
-include("actions.jl")
-include("rules.jl")
-
 #####
 ##### Export to JSON
 #####
 
+using MrJack
 import JSON
 
 struct InterfaceGameRepresentation
@@ -16,7 +10,7 @@ struct InterfaceGameRepresentation
 end
 
 function lower_character_dict(v)
-  Dict([string(c) => v[Int(c)] for c in CHARACTERS])
+  Dict([string(c) => v[Int(c)] for c in MrJack.CHARACTERS])
 end
 
 function JSON.lower(r::InterfaceGameRepresentation)
@@ -34,16 +28,12 @@ function JSON.lower(r::InterfaceGameRepresentation)
     "shcards" => r.g.shcards,
     "cstatus" => lower_character_dict(r.g.cstatus),
     "visible" => lower_character_dict(r.g.visible),
-    "visibility_mask" => visibility_mask(r.g))
+    "visibility_mask" => MrJack.visibility_mask(r.g))
 end
 
 #####
 ##### Main
 #####
-
-test_moves()
-test_reachability()
-test_rules()
 
 open("game.json", "w") do file
   repr = InterfaceGameRepresentation(Game())

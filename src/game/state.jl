@@ -368,29 +368,3 @@ function switch_off_numbered_lamp!(g, num)
   set_activated!(g, pos, false)
   set_lampid!(g, pos, 0x0)
 end
-
-function test_moves()
-  g = Game()
-  assert_state_coherence(g)
-  shpos = g.char_pos[SHERLOCK_HOLMES |> Int]
-  # Move a character
-  move_character!(g, SHERLOCK_HOLMES, shpos .+ TR)
-  assert_state_coherence(g)
-  # Swap two characters
-  swap_characters!(g, WILLIAM_GULL, MISS_STEALTHY)
-  assert_state_coherence(g)
-  # Move numbered lamp L3
-  posl3 = g.numbered_lamp_pos[3]
-  move_lamp!(g, posl3, posl3 .+ TR .+ TR .+ BR)
-  assert_state_coherence(g)
-  # Move an anonymous lamp
-  move_lamp!(g, g.char_pos[INSPECTOR_LESTRADE |> Int] .+ BR, posl3)
-  assert_state_coherence(g)
-  # Move a lid
-  move_lid!(g, g.numbered_lamp_pos[1] .+ BB, g.numbered_lamp_pos[4] .+ TR)
-  assert_state_coherence(g)
-  # Switch L1 off
-  switch_off_numbered_lamp!(g, 1)
-  g.turn = 2
-  assert_state_coherence(g)
-end
