@@ -31,9 +31,11 @@ These status are used to indicate that a random decision is waiting to be made.
 When either the detectives or Sherlock has to play and the game is still
 running, the status is `SELECTING_CHARACTER` or `PLAYING_CHARACTER`.
 
-At first, the status should be `SELECTING_CHARACTER`.
+At first, the status should be `PLAYING_TURN`.
   - To access the current player, use `current_player(state)`
-  - To access the set of playable characters, use `playable_characters(state)`
+  - To access the set of playable characters, use `playable_characters(state)`.
+    If no player is playable anymore, the turn has ended and the user must send
+    action [`FinishTurn`](@ref).
 This status should be answered with action [`SelectCharacter`](@ref).
 
 After this, the status should become `PLAYING_CHARACTER`. This status
@@ -41,20 +43,26 @@ must be answered by actions of type [`MoveCharacter`](@ref),
 [`PowerMove`](@ref) or [`Accusation`](@ref).
   - To know if the character already used its power, use `power_used(state)`
   - To know if the character already moves, use `used_move(state)`
+
+When the players are done using the selected characters, they must use an
+[`UnselectCharacter`](@ref) action.
 """
 @enum GameStatus begin
   # Endgames
-  JACK_ESCAPED
-  JACK_CAPTURED
-  TIMEOUT
+  JACK_CAPTURED = 0
+  JACK_ESCAPED = 1
+  WRONG_ACCUSATION = 2
+  TIMEOUT = 3
   # Chance states
-  PICKING_JACK
-  PICKING_PLAYABLE_CHARACTERS
-  PICKING_SHERLOCK_CARD
+  PICKING_JACK = 4
+  PICKING_PLAYABLE_CHARACTERS = 5
+  PICKING_SHERLOCK_CARD = 6
   # Play states
-  SELECTING_CHARACTER
-  PLAYING_CHARACTER
+  SELECTING_CHARACTER = 7
+  PLAYING_CHARACTER = 8
 end
+
+endgame_status(s::GameStatus) = Int(s) <= 3
 
 @enum Player begin
   DETECTIVES
@@ -144,8 +152,8 @@ function is_chance_node(game)
 end
 
 function current_player(game)
-  @assert game.status == PLAYING
-  n = length(sh.prevchars) + 1 # Turn stage as a number in {1..4}
+  @assert game.status ∈ [SELECTING_CHARACTER, PLAYING_CHARACTER]
+  n = length(game.prevchars) + 1 # Turn stage as a number in {1..4}
   @assert 1 <= n <= 4
   if game.turn % 2 == 1
     return (n == 1 || n == 4) ? DETECTIVES : JACK
@@ -155,7 +163,7 @@ function current_player(game)
 end
 
 function playable_characters(game)
-  @assert game.status == PLAYING
+  @assert game.status == SELECTING_CHARACTER
   @assert !isempty(game.remchars)
   return game.remchars
 end
@@ -303,7 +311,7 @@ function move_character!(g, c, newpos)
   g.char_pos[c |> Int] = newpos
 end
 
-function swap_characters(g, c1, c2)
+function swap_characters!(g, c1, c2)
   tmp = (1, 1) # Inaccessible position that is only used for the switch
   pos1 = g.char_pos[c1 |> Int]
   pos2 = g.char_pos[c2 |> Int]
@@ -321,13 +329,13 @@ function swap_activation(g, src, dst, type, v)
   set_activated!(g, dst, v)
 end
 
-function move_cops(g, src, dst)
-  swap_activation(g, src, dest, EXIT, false)
+function move_cops!(g, src, dst)
+  swap_activation(g, src, dst, EXIT, false)
   delete!(g.cops_pos, src)
   push!(g.cops_pos, dst)
 end
 
-function move_lid(g, src, dst)
+function move_lid!(g, src, dst)
   swap_activation(g, src, dst, WELL, false)
   delete!(g.lid_pos, src)
   push!(g.active_wells, src)
@@ -335,7 +343,7 @@ function move_lid(g, src, dst)
   delete!(g.active_wells, dst)
 end
 
-function move_lamp(g, src, dst)
+function move_lamp!(g, src, dst)
   swap_activation(g, src, dst, LAMP, true)
   id = get_lampid(g, src)
   if id > 0
@@ -369,17 +377,17 @@ function test_moves()
   move_character!(g, SHERLOCK_HOLMES, shpos .+ TR)
   assert_state_coherence(g)
   # Swap two characters
-  swap_characters(g, WILLIAM_GULL, MISS_STEALTHY)
+  swap_characters!(g, WILLIAM_GULL, MISS_STEALTHY)
   assert_state_coherence(g)
   # Move numbered lamp L3
   posl3 = g.numbered_lamp_pos[3]
-  move_lamp(g, posl3, posl3 .+ TR .+ TR .+ BR)
+  move_lamp!(g, posl3, posl3 .+ TR .+ TR .+ BR)
   assert_state_coherence(g)
   # Move an anonymous lamp
-  move_lamp(g, g.char_pos[INSPECTOR_LESTRADE |> Int] .+ BR, posl3)
+  move_lamp!(g, g.char_pos[INSPECTOR_LESTRADE |> Int] .+ BR, posl3)
   assert_state_coherence(g)
   # Move a lid
-  move_lid(g, g.numbered_lamp_pos[1] .+ BB, g.numbered_lamp_pos[4] .+ TR)
+  move_lid!(g, g.numbered_lamp_pos[1] .+ BB, g.numbered_lamp_pos[4] .+ TR)
   assert_state_coherence(g)
   # Switch L1 off
   switch_off_numbered_lamp!(g, 1)

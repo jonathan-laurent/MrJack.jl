@@ -30,6 +30,8 @@ end
 
 walkable_tile(tile) = (Int(tile) >= 4)
 
+game_tile(tile) = (Int(tile) >= 2)
+
 # Representation fits in 4 bytes
 struct Tile
   type :: TileType

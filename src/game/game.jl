@@ -43,6 +43,7 @@ end
 
 test_moves()
 test_reachability()
+test_rules()
 
 open("game.json", "w") do file
   repr = InterfaceGameRepresentation(Game())

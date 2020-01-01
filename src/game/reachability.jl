@@ -9,7 +9,7 @@ function reachable_zero(pos)
   return R
 end
 
-function reachable_transition(R, active_wells; through_houses=false)
+function reachable_transition(R, active_wells; all_tiles=false)
   nx, ny = size(INITIAL_BOARD)
   Rnext = falses(nx, ny)
   for x in 1:nx
@@ -21,7 +21,7 @@ function reachable_transition(R, active_wells; through_houses=false)
           newpos = pos .+ dir
           if valid_pos(INITIAL_BOARD, newpos)
             t = INITIAL_BOARD[newpos...].type
-            if walkable_tile(t) || (through_houses && t == HOUSE)
+            if walkable_tile(t) || (all_tiles && t == game_tile(t))
               Rnext[newpos...] = true
             end
           end
@@ -38,11 +38,11 @@ function reachable_transition(R, active_wells; through_houses=false)
   return Rnext
 end
 
-function reachable_positions(pos, n, active_wells; through_houses=false)
+function reachable_positions(pos, n, active_wells; all_tiles=false)
   Rs = [reachable_zero(pos)]
   for i in 1:n
     Rnext = reachable_transition(
-      Rs[end], active_wells, through_houses=through_houses)
+      Rs[end], active_wells, all_tiles=all_tiles)
     push!(Rs, Rnext)
   end
   R = reduce(Rs) do R1, R2
