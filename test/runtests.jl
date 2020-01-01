@@ -107,7 +107,7 @@ end
   cant(AskSherlock())
 end
 
-@testset "Testing Goodley's whistle" begin
+@testset "Testing Sgt. Goodley and Miss Stealthy" begin
   g = Game()
   @noinline function do!(a)
     @test valid_action(g, a)
@@ -118,8 +118,9 @@ end
     @test !valid_action(g, a)
   end
   do!(SelectJack(SHERLOCK_HOLMES))
-  playable = Set([SERGENT_GOODLEY, JOHN_WATSON, JEREMY_BERT, JOHN_SMITH])
+  playable = Set([SERGENT_GOODLEY, MISS_STEALTHY, JEREMY_BERT, JOHN_SMITH])
   do!(SelectPlayable(playable))
+  # Tests with Goodley's whistle
   do!(SelectCharacter(SERGENT_GOODLEY))
   shpos = g.char_pos[Int(SHERLOCK_HOLMES)]
   cant(UseWhistle([(SHERLOCK_HOLMES, shpos .+ BB)])) # Get further from SG
@@ -134,6 +135,16 @@ end
   do!(UseWhistle([
     (SHERLOCK_HOLMES, shpos .+ 2 .* TR),
     (JEREMY_BERT, shpos .+ 3 .* TR)]))
+  do!(MoveCharacter(g.char_pos[Int(SERGENT_GOODLEY)] .+ TT))
+  do!(UnselectCharacter())
+  # Testing Miss Stealthy
+  do!(SelectCharacter(MISS_STEALTHY))
+  cant(UnselectCharacter())
+  cant(MoveCharacter(g.numbered_lamp_pos[2] .+ TR)) # Too far
+  # Cannot form a move request that ends up on a house:
+  @test_throws AssertionError MoveCharacter(g.numbered_lamp_pos[3] .+ 2 .* BB)
+  do!(MoveCharacter(g.numbered_lamp_pos[3] .+ BB))
+  do!(UnselectCharacter())
 end
 
 @testset "Adjacency and distance matrices" begin

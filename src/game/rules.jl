@@ -6,6 +6,7 @@
   BEFORE_OR_AFTER_MOVING
   INSTEAD_OF_MOVING
   AFTER_MOVING
+  NEVER
 end
 
 const CHARACTER_POWER_MODE = Dict(
@@ -15,7 +16,8 @@ const CHARACTER_POWER_MODE = Dict(
   JOHN_WATSON => AFTER_MOVING,
   INSPECTOR_LESTRADE => BEFORE_OR_AFTER_MOVING,
   JOHN_SMITH => BEFORE_OR_AFTER_MOVING,
-  SERGENT_GOODLEY => BEFORE_OR_AFTER_MOVING)
+  SERGENT_GOODLEY => BEFORE_OR_AFTER_MOVING,
+  MISS_STEALTHY => NEVER)
 
 #####
 ##### Are actions valid?
@@ -43,9 +45,11 @@ function power_available(game)
     return !game.used_power
   elseif pm == AFTER_MOVING
     return !game.used_power && game.used_move
-  else
-    @assert pm == INSTEAD_OF_MOVING
+  elseif pm == INSTEAD_OF_MOVING
     return !game.used_power && !game.used_move
+  else
+    @assert pm == NEVER
+    return false
   end
 end
 
@@ -53,6 +57,8 @@ function done_with_selected_character(game)
   pm = CHARACTER_POWER_MODE[game.selected]
   if pm == INSTEAD_OF_MOVING
     return game.used_move || game.used_power
+  elseif pm == NEVER
+    return game.used_move
   else
     @assert pm ∈ [BEFORE_OR_AFTER_MOVING, AFTER_MOVING]
     return game.used_move && game.used_power
