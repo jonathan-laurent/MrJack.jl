@@ -129,9 +129,9 @@ end
   cant(UseWhistle([(SHERLOCK_HOLMES, shpos .+ BB)])) # Get further from SG
   cant(UseWhistle([(SHERLOCK_HOLMES, shpos .+ TR .+ TR .+ TR .+ TR)]))
   cant(UseWhistle([(SHERLOCK_HOLMES, shpos)]))
-  cant(UseWhistle([ # Two destinations cannot be the same
+  @test_throws AssertionError UseWhistle([
     (SHERLOCK_HOLMES, shpos .+ 2 .* TR),
-    (JEREMY_BERT, shpos .+ 2 .* TR)]))
+    (JEREMY_BERT, shpos .+ 2 .* TR)])
   cant(UseWhistle([ # Four moves needed
     (SHERLOCK_HOLMES, shpos .+ 2 .* TR),
     (JEREMY_BERT, shpos .+ 4 .* TR)]))

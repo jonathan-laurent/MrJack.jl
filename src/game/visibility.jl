@@ -13,7 +13,8 @@ end
 
 function use_watson_light!(V, wpos, wldir)
   pos = wpos .+ wldir
-  while walkable_tile(INITIAL_BOARD[pos...].type)
+  while valid_pos(INITIAL_BOARD, pos) &&
+        walkable_tile(INITIAL_BOARD[pos...].type)
     V[pos...] = true
     pos = pos .+ wldir
   end
