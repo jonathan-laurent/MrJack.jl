@@ -128,7 +128,9 @@ struct UseWhistle <: PowerMove
   moves :: Vector{Tuple{Character, Position}}
   function UseWhistle(moves)
     cs = [m[1] for m in moves]
+    dsts = [m[2] for m in moves]
     @assert length(cs) == length(unique(cs))
+    @assert length(dsts) == length(unique(dsts))
     @assert all(STREET_TILES[m[2]...] for m in moves)
     @assert 1 <= length(moves) <= 3
     return new(moves)
