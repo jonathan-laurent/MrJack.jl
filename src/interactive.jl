@@ -13,8 +13,20 @@ function main_loop()
     function activated_at_pos(arr)
         return g.board[arr...].activated
     end
+    function exit_at_pos(arr)
+        return g.board[arr...].type == MrJack.EXIT
+    end
     function arr_to_tuple(arr)
         return tuple(arr...)
+    end
+    function moveAction(arr)
+        if char_at_pos(arr) != MrJack.NO_CHARACTER
+            return Accusation(char_at_pos(arr))
+        elseif exit_at_pos(arr)
+            return Escape(arr_to_tuple(arr))
+        else
+            return MoveCharacter(arr_to_tuple(arr))
+        end
     end
 
     cmd = readline()
@@ -46,7 +58,7 @@ function main_loop()
                     if s[3] == "choose" && length(args) == 1
                         action = SelectCharacter(CharD[args[1]])
                     elseif s[3] == "move"
-                        action = MoveCharacter(arr_to_tuple(args["end"]))
+                        action = moveAction(args["end"])
                     elseif s[3] == "power" && g.selected == SHERLOCK_HOLMES && length(args) == 0
                         action = AskSherlock()
                     elseif s[3] == "power" && length(args) >= 1
@@ -73,7 +85,7 @@ function main_loop()
                                 action = MoveCops(arr_to_tuple(args[1]["start"]), arr_to_tuple(args[1]["end"]))
                             end
                         elseif g.selected == MISS_STEALTHY && length(args) == 1
-                            action = MoveCharacter(arr_to_tuple(args[1]["end"]))
+                            action = moveAction(args[1]["end"])
                         elseif g.selected == JOHN_SMITH
                             if activated_at_pos(args[1]["start"])
                                 action = MoveLamp(arr_to_tuple(args[1]["start"]), arr_to_tuple(args[1]["end"]))
