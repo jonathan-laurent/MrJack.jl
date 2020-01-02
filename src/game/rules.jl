@@ -122,7 +122,7 @@ function valid_character_action(game, action::Accusation)
   if !(move_available(game) && current_player(game) == DETECTIVES)
     return false
   else
-    dst = game.char_pos[action.accused]
+    dst = game.char_pos[Int(action.accused)]
     return valid_character_move(game, game.selected, dst)
   end
 end
