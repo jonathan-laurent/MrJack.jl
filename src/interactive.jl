@@ -10,6 +10,9 @@ function main_loop()
     function char_at_pos(arr)
         return g.board[arr...].character
     end
+    function activated_at_pos(arr)
+        return g.board[arr...].activated
+    end
     function arr_to_tuple(arr)
         return tuple(arr...)
     end
@@ -47,7 +50,11 @@ function main_loop()
                     action = AskSherlock()
                 elseif s[3] == "power" && length(args) >= 1
                     if g.selected == JEREMY_BERT
-                        action = MoveLid(arr_to_tuple(args[1]["start"]), arr_to_tuple(args[1]["end"]))
+                        if activated_at_pos(args[1]["start"])
+                            action = MoveLid(arr_to_tuple(args[1]["end"]), arr_to_tuple(args[1]["start"]))
+                        else
+                            action = MoveLid(arr_to_tuple(args[1]["start"]), arr_to_tuple(args[1]["end"]))
+                        end
                     elseif g.selected == WILLIAM_GULL
                         character = char_at_pos(args[1]["end"])
                         if character == WILLIAM_GULL
@@ -59,11 +66,19 @@ function main_loop()
                     elseif g.selected == JOHN_WATSON && length(args) == 1
                         action = ReorientWatsonLight(arr_to_tuple(args[1]["end"]))
                     elseif g.selected == INSPECTOR_LESTRADE
-                        action = MoveCops(arr_to_tuple(args[1]["start"]), arr_to_tuple(args[1]["end"]))
+                        if activated_at_pos(args[1]["start"])
+                            action = MoveCops(arr_to_tuple(args[1]["end"]), arr_to_tuple(args[1]["start"]))
+                        else
+                            action = MoveCops(arr_to_tuple(args[1]["start"]), arr_to_tuple(args[1]["end"]))
+                        end
                     elseif g.selected == MISS_STEALTHY && length(args) == 1
                         action = MoveCharacter(arr_to_tuple(args[1]["end"]))
                     elseif g.selected == JOHN_SMITH
-                        action = MoveLamp(arr_to_tuple(args[1]["start"]), arr_to_tuple(args[1]["end"]))
+                        if activated_at_pos(args[1]["start"])
+                            action = MoveLamp(arr_to_tuple(args[1]["start"]), arr_to_tuple(args[1]["end"]))
+                        else
+                            action = MoveLamp(arr_to_tuple(args[1]["end"]), arr_to_tuple(args[1]["start"]))
+                        end
                     elseif g.selected == SERGENT_GOODLEY
                         action = UseWhistle([ (char_at_pos(arg["start"]), arr_to_tuple(arg["end"])) for arg in args ])
                     end
@@ -76,6 +91,9 @@ function main_loop()
                     play!(g, action)
                     if valid_action(g,UnselectCharacter())
                         play!(g,UnselectCharacter())
+                    end
+                    if valid_action(g,FinishTurn())
+                        play!(g,FinishTurn())
                     end
                     println("{ \"status\": 0 }")
                 else
