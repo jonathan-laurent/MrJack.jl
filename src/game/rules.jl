@@ -200,7 +200,7 @@ function valid_character_action(game, action::UseWhistle)
   elseif n == 2
     dss = [[1, 2], [2, 1]]
   else
-    @assert d == 3
+    @assert n == 3
     dss = [[1, 1, 1]]
   end
   return any(dss) do ds
