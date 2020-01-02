@@ -254,7 +254,7 @@ function play!(game, action::SelectSherlockCard)
     game.cstatus[Int(action.innocent)] = INNOCENT_HI
     update_characters_status!(game)
   end
-  game.status = SELECTING_CHARACTER
+  game.status = PLAYING_CHARACTER
 end
 
 # Play actions
