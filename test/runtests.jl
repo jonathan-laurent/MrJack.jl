@@ -143,7 +143,8 @@ end
   cant(MoveCharacter(g.numbered_lamp_pos[2] .+ TR)) # Too far
   # Cannot form a move request that ends up on a house:
   @test_throws AssertionError MoveCharacter(g.numbered_lamp_pos[3] .+ 2 .* BB)
-  do!(MoveCharacter(g.numbered_lamp_pos[3] .+ BB))
+  do!(MoveCharacter(g.numbered_lamp_pos[3] .+ 2 .* BR))
+  #do!(MoveCharacter(g.numbered_lamp_pos[3] .+ BB))
   do!(UnselectCharacter())
 end
 

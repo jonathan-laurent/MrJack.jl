@@ -21,7 +21,7 @@ function reachable_transition(R, active_wells; all_tiles=false)
           newpos = pos .+ dir
           if valid_pos(INITIAL_BOARD, newpos)
             t = INITIAL_BOARD[newpos...].type
-            if walkable_tile(t) || (all_tiles && t == game_tile(t))
+            if walkable_tile(t) || (all_tiles && game_tile(t))
               Rnext[newpos...] = true
             end
           end
