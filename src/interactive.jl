@@ -3,16 +3,17 @@ using MrJack
 
 CharD = Dict([ (string(x),x) for x in instances(Character)])
 
-function char_at_pos(arr)
-    return g.board[arr[2]][arr[1]].character
-end
-function arr_to_tuple(arr)
-    return tuple(arr...)
-end
-
 function main_loop()
     g = Game()
     history = []
+
+    function char_at_pos(arr)
+        return g.board[arr...].character
+    end
+    function arr_to_tuple(arr)
+        return tuple(arr...)
+    end
+
     cmd = readline()
     while !isempty(cmd)
         s = split(cmd)
@@ -73,6 +74,9 @@ function main_loop()
                 if action !== nothing && valid_action(g, action)
                     push!(history, deepcopy(g))
                     play!(g, action)
+                    if valid_action(g,UnselectCharacter())
+                        play!(g,UnselectCharacter())
+                    end
                     println("{ \"status\": 0 }")
                 else
                     println("{ \"status\": 1 }")
