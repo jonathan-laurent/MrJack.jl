@@ -100,7 +100,7 @@ function main_loop()
                     JSON.print(JSON.stdout, Dict("status" => 1), 2)
                 end
             catch e
-                msg = sprint(showerror, e)
+                msg = sprint(showerror, e, catch_backtrace())
                 JSON.print(JSON.stdout, Dict("status" => 2, "message" => msg), 2)
             end
         end
