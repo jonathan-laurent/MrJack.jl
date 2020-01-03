@@ -68,6 +68,7 @@ function main_loop()
         elseif s[1] == "play" && length(s) >= 2
             try
                 action = nothing
+                description = nothing
                 if s[2] == "chance" && length(s) >= 3
                     args = JSON.parse(join(s[3:end], " "))
                     if g.status == PICKING_JACK && length(args) == 1
@@ -78,7 +79,8 @@ function main_loop()
                         action = SelectSherlockCard(CharD[args[1]])
                     end
                 elseif s[2] == "ai" && length(s) == 2
-                    # TODO
+                    action = nothing # TODO
+                    description = string(action)
                 elseif s[2] == "user" && length(s) >= 4
                     args = JSON.parse(join(s[4:end], " "))
                     if s[3] == "choose" && length(args) == 1
@@ -133,7 +135,11 @@ function main_loop()
                     if valid_action(g,FinishTurn())
                         play!(g,FinishTurn())
                     end
-                    JSON.print(JSON.stdout, Dict("status" => 0), 2)
+                    if description !== nothing
+                        JSON.print(JSON.stdout, Dict("status" => 0, "description" => description), 2)
+                    else
+                        JSON.print(JSON.stdout, Dict("status" => 0), 2)
+                    end
                 else
                     JSON.print(JSON.stdout, Dict("status" => 1), 2)
                 end
