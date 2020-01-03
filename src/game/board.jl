@@ -211,7 +211,22 @@ const INITIAL_BOARD = map(parse_init_tile, BOARD_STR_MATRIX)
 
 initial_board() = copy(INITIAL_BOARD)
 
-const STREET_TILES =
-  map(INITIAL_BOARD) do t
-    walkable_tile(t.type)
-  end |> BitArray
+const STREET_TILES = BitArray(map(t -> walkable_tile(t.type), INITIAL_BOARD))
+
+const NO_EXIT_MASK = BitArray(map(t -> t.type != EXIT, INITIAL_BOARD))
+
+function find_positions(f)
+  nx, ny = size(INITIAL_BOARD)
+  res = Set{Position}()
+  for y in 1:ny
+    for x in 1:nx
+      pos = (x, y)
+      if valid_pos(INITIAL_BOARD, pos) && f(pos)
+        push!(res, pos)
+      end
+    end
+  end
+  return res
+end
+
+const EXITS_SET = find_positions(pos -> INITIAL_BOARD[pos...].type == EXIT)

@@ -25,13 +25,20 @@ const CHARACTER_POWER_MODE = Dict(
 
 # Utilities
 
-function valid_character_move(game, char, dst,
-    escape=false, maxd=nothing, wells=game.active_wells)
+function valid_character_moves(
+    game, char, escape=false, maxd=nothing, wells=game.active_wells)
   src = game.char_pos[Int(char)]
   ms = (char == MISS_STEALTHY)
   d = isnothing(maxd) ? (ms ? 4 : 3) : maxd
   R = reachable_positions_memoized(src, d, wells, all_tiles=ms)
-  return R[dst...] && (!(get_type(game, dst) == EXIT) || escape)
+  escape || (R .&= NO_EXIT_MASK)
+  return R
+end
+
+function valid_character_move(
+    game, char, dst, escape=false, maxd=nothing, wells=game.active_wells)
+  R = valid_character_moves(game, char, escape, maxd, wells)
+  return R[dst...]
 end
 
 function move_available(game)
@@ -62,17 +69,6 @@ function done_with_selected_character(game)
   else
     @assert pm ∈ [BEFORE_OR_AFTER_MOVING, AFTER_MOVING]
     return game.used_move && game.used_power
-  end
-end
-
-function update_characters_status!(game)
-  not_innocent = findall(game.cstatus) do st
-    !(st == INNOCENT_CK || st == INNOCENT_HI)
-  end
-  @assert length(not_innocent) >= 1
-  if length(not_innocent) == 1
-    # Jack was found
-    game.cstatus[not_innocent[1]] = GUILTY
   end
 end
 
@@ -248,12 +244,7 @@ end
 
 function play!(game, action::SelectSherlockCard)
   delete!(game.shcards, action.innocent)
-  st = game.cstatus[Int(action.innocent)]
-  @assert st != GUILTY
-  if st == UNKNOWN
-    game.cstatus[Int(action.innocent)] = INNOCENT_HI
-    update_characters_status!(game)
-  end
+  game.innocent_hi[Int(action.innocent)] = true
   game.status = PLAYING_CHARACTER
 end
 
@@ -281,12 +272,11 @@ function play!(game, action::FinishTurn)
   jv = game.visible[Int(game.jack)]
   for c in CHARACTERS
     v = game.visible[Int(c)]
-    st = game.cstatus[Int(c)]
-    if st ∈ [UNKNOWN, INNOCENT_HI] && v != jv
-      game.cstatus[Int(c)] = INNOCENT_CK
+    if v != jv
+      game.innocent_hi[Int(c)] = true
+      game.innocent_ck[Int(c)] = true
     end
   end
-  update_characters_status!(game)
   # Switch off a numbered lamp
   if 1 <= game.turn <= 4
     switch_off_numbered_lamp!(game, game.turn)
@@ -381,11 +371,12 @@ function Game()
   wldir = BR
   jack = NO_CHARACTER
   shcards = Set() # Invalid until Jack is picked
-  cstatus = [UNKNOWN for c in CHARACTERS]
+  innocent_hi = falses(length(CHARACTERS))
+  innocent_ck = falses(length(CHARACTERS))
   visible = falses(length(CHARACTERS)) # Dummy
   g = Game(
     status, board, turn, remchars, prevchars, selected, used_power, used_move,
-    wldir, jack, shcards, cstatus, visible)
+    wldir, jack, shcards, innocent_hi, innocent_ck, visible)
   update_visible!(g)
   return g
 end
