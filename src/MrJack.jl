@@ -13,7 +13,7 @@ export Accusation, Escape
 export AskSherlock, ReorientWatsonLight, MoveLamp, MoveCops, MoveLid
 export SwapWilliamGull, UseWhistle
 
-export play!, valid_action
+export play!, valid_action, game_terminated
 export current_player, DETECTIVES, JACK
 export CharacterStatus, UNKNOWN, GUILTY, INNOCENT_CK, INNOCENT_HI
 export playable_characters

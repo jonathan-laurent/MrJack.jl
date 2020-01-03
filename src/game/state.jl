@@ -192,6 +192,8 @@ function playable_characters(game)
   return game.remchars
 end
 
+game_terminated(game) = endgame_status(game.status)
+
 #####
 ##### Cache management and state coherence
 #####

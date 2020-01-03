@@ -62,14 +62,14 @@ end
   do!(SelectJack(SHERLOCK_HOLMES))
   playable_1 = Set([WILLIAM_GULL, INSPECTOR_LESTRADE, JEREMY_BERT, JOHN_SMITH])
   do!(SelectPlayable(playable_1))
-  @assert current_player(g) == DETECTIVES
+  @test current_player(g) == DETECTIVES
   cant(SelectCharacter(SHERLOCK_HOLMES))
   do!(SelectCharacter(WILLIAM_GULL))
   do!(SwapWilliamGull(SERGENT_GOODLEY))
   cant(MoveCharacter(g.numbered_lamp_pos[3] .+ BR .+ TR))
   do!(UnselectCharacter())
   cant(FinishTurn())
-  @assert current_player(g) == JACK
+  @test current_player(g) == JACK
   cant(SelectCharacter(WILLIAM_GULL))
   do!(SelectCharacter(INSPECTOR_LESTRADE))
   exit1 = g.numbered_lamp_pos[1] .+ BB .+ BB
@@ -81,14 +81,14 @@ end
   do!(MoveCharacter(jspos .+ BL))
   cant(FinishTurn())
   do!(UnselectCharacter())
-  @assert current_player(g) == JACK
+  @test current_player(g) == JACK
   do!(SelectCharacter(JEREMY_BERT))
   jbpos = g.char_pos[Int(JEREMY_BERT)]
   do!(MoveCharacter(jbpos .+ BB))
   do!(MoveLid(exit1 .+ TT, exit4 .+ TT .+ TT))
   do!(UnselectCharacter())
   cant(FinishTurn())
-  @assert current_player(g) == DETECTIVES
+  @test current_player(g) == DETECTIVES
   do!(SelectCharacter(JOHN_SMITH))
   cant(MoveCharacter(jspos))
   do!(MoveCharacter(jspos .+ TT))
@@ -97,18 +97,20 @@ end
   do!(MoveLamp(shpos .+ TL, jspos .+ TL))
   do!(UnselectCharacter())
   do!(FinishTurn())
-  @assert g.turn == 2
-  @assert count(g.visible) == 2 # JS and SG
-  @assert g.cstatus[Int(JOHN_SMITH)] == INNOCENT_CK
-  @assert g.cstatus[Int(SERGENT_GOODLEY)] == INNOCENT_CK
-  @assert g.cstatus[Int(SHERLOCK_HOLMES)] == UNKNOWN
+  @test g.turn == 2
+  @test count(g.visible) == 2 # JS and SG
+  @test g.cstatus[Int(JOHN_SMITH)] == INNOCENT_CK
+  @test g.cstatus[Int(SERGENT_GOODLEY)] == INNOCENT_CK
+  @test g.cstatus[Int(SHERLOCK_HOLMES)] == UNKNOWN
   cant(SelectPlayable(playable_1))
   playable_2 = Set([c for c in CHARACTERS if c ∉ playable_1])
-  @assert playable_characters(g) == playable_2
-  @assert current_player(g) == JACK
+  @test playable_characters(g) == playable_2
+  @test current_player(g) == JACK
   do!(SelectCharacter(SHERLOCK_HOLMES))
+  @test !game_terminated(g)
   do!(Escape(exit1))
-  @assert g.status == JACK_ESCAPED
+  @test g.status == JACK_ESCAPED
+  @test game_terminated(g)
   cant(AskSherlock())
 end
 
