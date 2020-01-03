@@ -99,9 +99,9 @@ end
   do!(FinishTurn())
   @test g.turn == 2
   @test count(g.visible) == 2 # JS and SG
-  @test g.cstatus[Int(JOHN_SMITH)] == INNOCENT_CK
-  @test g.cstatus[Int(SERGENT_GOODLEY)] == INNOCENT_CK
-  @test g.cstatus[Int(SHERLOCK_HOLMES)] == UNKNOWN
+  @test g.innocent_ck[Int(JOHN_SMITH)]
+  @test g.innocent_ck[Int(SERGENT_GOODLEY)]
+  @test !g.innocent_ck[Int(SHERLOCK_HOLMES)]
   cant(SelectPlayable(playable_1))
   playable_2 = Set([c for c in CHARACTERS if c ∉ playable_1])
   @test playable_characters(g) == playable_2

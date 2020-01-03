@@ -25,6 +25,9 @@ export SELECTING_CHARACTER, PLAYING_CHARACTER
 
 export InterfaceGameRepresentation
 
+const AI_DEBUG_MODE = false
+
+
 include("game/board.jl")
 include("game/state.jl")
 include("game/reachability.jl")
@@ -34,9 +37,11 @@ include("game/rules.jl")
 
 include("board_json.jl")
 
+#=
 include("ai/value.jl")
 include("ai/branch.jl")
 include("ai/alphabeta.jl")
 include("ai/ai.jl")
+=#
 
 end

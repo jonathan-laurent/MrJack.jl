@@ -25,7 +25,8 @@ function JSON.lower(r::InterfaceGameRepresentation)
     "wldir" => r.g.wldir,
     "jack" => r.g.jack,
     "shcards" => r.g.shcards,
-    "cstatus" => lower_character_dict(r.g.cstatus),
+    "innocent_hi" => lower_character_dict(r.g.innocent_hi),
+    "innocent_ck" => lower_character_dict(r.g.innocent_ck),
     "visible" => lower_character_dict(r.g.visible),
     "visibility_mask" => visibility_mask(r.g))
 end

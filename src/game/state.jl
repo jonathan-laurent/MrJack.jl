@@ -74,19 +74,6 @@ end
 ##### Detectives knowledge
 #####
 
-"""
-    CharacterStatus
-
-Detectives knowledge about a character.
-  - `UNKNOWN`: the detectives have no information
-  - `GUILTY`: the detectives know that the character is guilty and are
-     therefore make an accusation.
-  - `INNOCENT_CK`: it is common knowledge that the character is innocent.
-  - `INNOCENT_HI`: the detectives know that the character is innocent but
-     Jack does not know that the detective know.
-"""
-@enum CharacterStatus UNKNOWN GUILTY INNOCENT_CK INNOCENT_HI
-
 #####
 ##### Game State
 #####
@@ -106,7 +93,8 @@ mutable struct Game
   # Who is who and who knows what?
   jack :: Character
   shcards :: Set{Character} # Sherlock innocent cards
-  cstatus :: Vector{CharacterStatus} # Indices: character numbers
+  innocent_hi :: BitVector # Innocent from the detective's perspective
+  innocent_ck :: BitVector # Innocent from common knowledge
   visible :: BitVector # idem
   # Cached information: where are things
   char_pos :: Vector{Position}
@@ -119,7 +107,7 @@ end
 
 function Game(
     status, board, turn, remchars, prevchars, selected, used_power, used_move,
-    wldir, jack, shcards, cstatus, visible)
+    wldir, jack, shcards, innocent_hi, innocent_ck, visible)
   # Dummy initialization for the cache
   char_pos = Position[(0, 0) for c in CHARACTERS]
   cops_pos = Set()
@@ -129,7 +117,7 @@ function Game(
   active_wells = Set()
   g = Game(
     status, board, turn, remchars, prevchars, selected, used_power, used_move,
-    wldir, jack, shcards, cstatus, visible,
+    wldir, jack, shcards, innocent_hi, innocent_ck, visible,
     char_pos, cops_pos, anon_lamp_pos,
     numbered_lamp_pos, lid_pos, active_wells)
   init_cache!(g)
@@ -150,7 +138,8 @@ function Base.copy(g::Game)
     g.wldir,
     g.jack,
     g.shcards |> copy,
-    g.cstatus |> copy,
+    g.innocent_hi |> copy,
+    g.innocent_ck |> copy,
     g.visible |> copy,
     g.char_pos |> copy,
     g.cops_pos |> copy,
