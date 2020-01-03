@@ -47,16 +47,54 @@ end
 function branch_select(g, playable)
   curp = current_player(g)
   @assert curp ∈ [JACK, DETECTIVES]
+  preferences = [SERGENT_GOODLEY, WILLIAM_GULL, JOHN_SMITH, JOHN_WATSON,
+    JEREMY_BERT, INSPECTOR_LESTRADE, MISS_STEALTHY, SHERLOCK_HOLMES]
+  if curp == JACK || g.cstatus[g.jack] == GUILTY
+      filter!((!=) g.jack, preferences)
+      pushfirst!(preferences, g.jack)
+  end
+  preferences = [SelectCharacter(c) for c in preferences]
+  return preferences
 end
 
 function branch_move(g)
   curp = current_player(g)
   @assert curp ∈ [JACK, DETECTIVES]
   char = g.selected
+  # When Jack plays Jack or Detectives play somebody suspected to be Jack
+  # (In this last case, take the negation)
+  # Compute a score for all the possible destinations:
+  #   +1 when 1-case away from a well
+  #   +2 when on a well
+  #   +1 when <= 3-cases away from an exit (activated or not)
+  #   +2 when it breaks the dichotomy (only for stage 1)
+  #   -2 when it improves the dichotomy (only for stage 1)
+  #   +1 when invisible if the character is Jack
+  # When Jack play somebody else or Detectives play somebody innocent
+  # (In this last case, take the negation)
+  #   +2 when it breaks the dichotomy (only for stage 1)
+  #   -2 when it improves the dichotomy (only for stage 1)
+  #   -1 per possibly guilty character reachable
+
+  # Take the n actions with higher score
 end
 
 function branch_power(g)
   curp = current_player(g)
   @assert curp ∈ [JACK, DETECTIVES]
   char = g.selected
+
+  if char == SHERLOCK_HOLMES
+      return [AskSherlock()]
+
+  elseif char == JEREMY_BERT
+      
+
+  elseif char == WILLIAM_GULL
+  elseif char == JOHN_WATSON
+  elseif char == INSPECTOR_LESTRADE
+  elseif char == MISS_STEALTHY
+  elseif char == JOHN_SMITH
+  elseif char == SERGENT_GOODLEY
+  end
 end
