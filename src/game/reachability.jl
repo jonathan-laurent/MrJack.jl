@@ -55,6 +55,25 @@ function reachable_positions(pos, n, active_wells; all_tiles=false)
   return R
 end
 
+# Memoized version
+
+const ReachabilityArgs = Tuple{Position, Int, Set{Position}, Bool}
+const MEMOIZED_REACHABILITY = Dict{ReachabilityArgs, BitArray{2}}()
+function reachable_positions_memoized(pos, n, active_wells; all_tiles=true)
+  args = (pos, n, active_wells, all_tiles)
+  if haskey(MEMOIZED_REACHABILITY, args)
+    return MEMOIZED_REACHABILITY[args]
+  else
+    R = reachable_positions(pos, n, active_wells; all_tiles=all_tiles)
+    MEMOIZED_REACHABILITY[args] = R
+    return R
+  end
+end
+
+#####
+##### Distance matrix with Floyd-Warshall
+#####
+
 function foreach_walkable_tile(f)
   nx, ny = size(INITIAL_BOARD)
   for y in 1:ny
@@ -66,10 +85,6 @@ function foreach_walkable_tile(f)
     end
   end
 end
-
-#####
-##### Distance matrix with Floyd-Warshall
-#####
 
 function adjacency_matrix()
   nx, ny = size(INITIAL_BOARD)

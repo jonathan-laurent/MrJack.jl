@@ -115,25 +115,49 @@ mutable struct Game
   numbered_lamp_pos :: Vector{Union{Position, Nothing}} # Indices: 1-4
   lid_pos :: Set{Position}
   active_wells :: Set{Position}
-  function Game(
-      status, board, turn, remchars, prevchars, selected, used_power, used_move,
-      wldir, jack, shcards, cstatus, visible)
-    # Dummy initialization for the cache
-    char_pos = Position[(0, 0) for c in CHARACTERS]
-    cops_pos = Set()
-    anon_lamp_pos = Set()
-    numbered_lamp_pos = Union{Position, Nothing}[nothing for i in 1:4]
-    lid_pos = Set()
-    active_wells = Set()
-    g = new(
-      status, board, turn, remchars, prevchars, selected, used_power, used_move,
-      wldir, jack, shcards, cstatus, visible,
-      char_pos, cops_pos, anon_lamp_pos,
-      numbered_lamp_pos, lid_pos, active_wells)
-    init_cache!(g)
-    assert_state_coherence(g)
-    return g
-  end
+end
+
+function Game(
+    status, board, turn, remchars, prevchars, selected, used_power, used_move,
+    wldir, jack, shcards, cstatus, visible)
+  # Dummy initialization for the cache
+  char_pos = Position[(0, 0) for c in CHARACTERS]
+  cops_pos = Set()
+  anon_lamp_pos = Set()
+  numbered_lamp_pos = Union{Position, Nothing}[nothing for i in 1:4]
+  lid_pos = Set()
+  active_wells = Set()
+  g = Game(
+    status, board, turn, remchars, prevchars, selected, used_power, used_move,
+    wldir, jack, shcards, cstatus, visible,
+    char_pos, cops_pos, anon_lamp_pos,
+    numbered_lamp_pos, lid_pos, active_wells)
+  init_cache!(g)
+  assert_state_coherence(g)
+  return g
+end
+
+function Base.copy(g::Game)
+  return Game(
+    g.status,
+    g.board |> copy,
+    g.turn,
+    g.remchars |> copy,
+    g.prevchars |> copy,
+    g.selected,
+    g.used_power,
+    g.used_move,
+    g.wldir,
+    g.jack,
+    g.shcards |> copy,
+    g.cstatus |> copy,
+    g.visible |> copy,
+    g.char_pos |> copy,
+    g.cops_pos |> copy,
+    g.anon_lamp_pos |> copy,
+    g.numbered_lamp_pos |> copy,
+    g.lid_pos |> copy,
+    g.active_wells |> copy)
 end
 
 #####

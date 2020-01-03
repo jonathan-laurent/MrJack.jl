@@ -1,6 +1,11 @@
 using Test
 using MrJack
 
+@testset "Testing copy" begin
+  g = copy(Game())
+  @test true
+end
+
 @testset "Testing micro moves" begin
   g = Game()
   MrJack.assert_state_coherence(g)

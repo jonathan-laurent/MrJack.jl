@@ -30,7 +30,7 @@ function valid_character_move(game, char, dst,
   src = game.char_pos[Int(char)]
   ms = (char == MISS_STEALTHY)
   d = isnothing(maxd) ? (ms ? 4 : 3) : maxd
-  R = reachable_positions(src, d, wells, all_tiles=ms)
+  R = reachable_positions_memoized(src, d, wells, all_tiles=ms)
   return R[dst...] && (!(get_type(game, dst) == EXIT) || escape)
 end
 
@@ -205,7 +205,7 @@ function valid_character_action(game, action::UseWhistle)
   end
   return any(dss) do ds
     all(zip(action.moves, ds)) do ((c, dst), d)
-      valid_character_move(game, c, dst, false, d, [])
+      valid_character_move(game, c, dst, false, d, Set{Position}())
     end
   end
 end
