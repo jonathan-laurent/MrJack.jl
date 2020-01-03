@@ -1,4 +1,5 @@
 import JSON
+using Serialization
 using MrJack
 
 CharD = Dict([ (string(x),x) for x in instances(Character)])
@@ -39,6 +40,31 @@ function main_loop()
                 g = pop!(history)
             end
             JSON.print(JSON.stdout, Dict("status" => 0), 2)
+        elseif s[1] == "reset"
+            g = Game()
+            history = []
+            JSON.print(JSON.stdout, Dict("status" => 0), 2)
+        elseif s[1] == "save" && length(s) >= 2
+            try
+                args = JSON.parse(join(s[2:end], " "))
+                filename = args["filename"]
+                push!(history, g)
+                serialize(filename, history)
+                pop!(history)
+                JSON.print(JSON.stdout, Dict("status" => 0), 2)
+            catch e
+                JSON.print(JSON.stdout, Dict("status" => 1), 2)
+            end
+        elseif s[1] == "load" && length(s) >= 2
+            try
+                args = JSON.parse(join(s[2:end], " "))
+                filename = args["filename"]
+                history = deserialize(filename)
+                g = pop!(history)
+                JSON.print(JSON.stdout, Dict("status" => 0), 2)
+            catch e
+                JSON.print(JSON.stdout, Dict("status" => 1), 2)
+            end
         elseif s[1] == "play" && length(s) >= 2
             try
                 action = nothing
