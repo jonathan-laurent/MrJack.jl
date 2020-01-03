@@ -31,7 +31,7 @@ These status are used to indicate that a random decision is waiting to be made.
 When either the detectives or Sherlock has to play and the game is still
 running, the status is `SELECTING_CHARACTER` or `PLAYING_CHARACTER`.
 
-At first, the status should be `PLAYING_TURN`.
+At first, the status should be `SELECTING_CHARACTER`.
   - To access the current player, use `current_player(state)`
   - To access the set of playable characters, use `playable_characters(state)`.
     If no player is playable anymore, the turn has ended and the user must send
