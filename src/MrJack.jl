@@ -34,4 +34,9 @@ include("game/rules.jl")
 
 include("board_json.jl")
 
+include("ai/value.jl")
+include("ai/branch.jl")
+include("ai/alphabeta.jl")
+include("ai/ai.jl")
+
 end
